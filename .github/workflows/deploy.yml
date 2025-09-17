@@ -28,9 +28,20 @@ jobs:
         echo "${{ secrets.EC2_SSH_KEY }}" > key.pem
         chmod 600 key.pem
         
-        ssh -o StrictHostKeyChecking=no -i key.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -i key.pem ubuntu@${{ secrets.EC2_HOST }} << 'EOF'
+          echo "Pulling latest image..."
           docker pull ${{ secrets.DOCKER_USERNAME }}/petclinic:latest
+          
+          echo "Stopping existing container..."
           docker stop petclinic || true
           docker rm petclinic || true
+          
+          echo "Starting new container..."
           docker run -d --name petclinic -p 8080:8080 --restart unless-stopped ${{ secrets.DOCKER_USERNAME }}/petclinic:latest
+          
+          echo "Cleaning up old images..."
+          docker image prune -f
+          
+          echo "Deployment completed successfully!"
+          docker ps | grep petclinic
         EOF
